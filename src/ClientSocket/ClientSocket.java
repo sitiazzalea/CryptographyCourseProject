@@ -4,15 +4,25 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 // import java.net.UnknownHostException;
 import java.util.Scanner;
+import org.zaza.Helper.HelperTools;
+import org.zaza.Helper.TLVWrapper;
 
+/**
+ *
+ * @author Zaza
+ */
 public class ClientSocket {
     private Socket socket;
     private DataInputStream inputStream = null;
     private DataOutputStream outputStream = null;
     private String username; 
-
+    private final char DATA_IN_CLEARTEXT = 'S';
+    private final char DATA_IN_BINARY = 'B';
+    
+    
     public ClientSocket(Socket socket, String username) {
         try {
             this.socket = socket;
@@ -38,10 +48,8 @@ public class ClientSocket {
 
                 while (socket.isConnected()) {
                     try {
-                        msgFromGroupChat = inputStream.readUTF();
-                        // byte[] msgFromGroupChatInByte = msgFromGroupChat.getBytes();
-                        System.out.println(msgFromGroupChat);
-                        // System.out.println(msgFromGroupChatInByte.toString());
+                        TLVWrapper tlv = HelperTools.readStream2TLV(inputStream);
+                        System.out.println(tlv.getValueAsString());
                     } catch (IOException e) {
                         closeEverything(socket, inputStream, outputStream);
                     }
@@ -55,10 +63,10 @@ public class ClientSocket {
 //          send username for the first time
             // System.out.println("To get PUBLIC KEY of other client: LIST_PUBLIC_KEY" );
             // System.out.println("To send message to specific user: ENCRYPT destination message" );
-            outputStream.writeUTF(username);
-            outputStream.writeChars("");
-            outputStream.flush();
-
+            byte[] usernameInBytes = username.getBytes(StandardCharsets.UTF_8);
+            System.out.println("username length in bytes: " + usernameInBytes.length);
+            HelperTools.sendTLV2Stream(DATA_IN_CLEARTEXT, usernameInBytes.length, usernameInBytes, outputStream);
+            
             Scanner scanner = new Scanner(System.in);
             while (socket.isConnected()) {
                 String messageToSend = scanner.nextLine();// di sini panggil fungsi encrypt 
