@@ -7,8 +7,8 @@ import java.util.Arrays;
  * @author Zaza
  */
 public class TLVWrapper {
-    public final char DATA_IN_CLEARTEXT = 'S';
-    public final char DATA_IN_BINARY = 'B';
+    public static final char DATA_IN_CLEARTEXT = 'S';
+    public static final char DATA_IN_BINARY = 'B';
     
     private char type;
     private int length;

@@ -19,8 +19,6 @@ public class ClientSocket {
     private DataInputStream inputStream = null;
     private DataOutputStream outputStream = null;
     private String username; 
-    private final char DATA_IN_CLEARTEXT = 'S';
-    private final char DATA_IN_BINARY = 'B';
     
     
     public ClientSocket(Socket socket, String username) {
@@ -64,16 +62,13 @@ public class ClientSocket {
             // System.out.println("To get PUBLIC KEY of other client: LIST_PUBLIC_KEY" );
             // System.out.println("To send message to specific user: ENCRYPT destination message" );
             byte[] usernameInBytes = username.getBytes(StandardCharsets.UTF_8);
-            System.out.println("username length in bytes: " + usernameInBytes.length);
-            HelperTools.sendTLV2Stream(DATA_IN_CLEARTEXT, usernameInBytes.length, usernameInBytes, outputStream);
+            HelperTools.sendTLV2Stream(TLVWrapper.DATA_IN_CLEARTEXT, usernameInBytes.length, usernameInBytes, outputStream);
             
             Scanner scanner = new Scanner(System.in);
             while (socket.isConnected()) {
                 String messageToSend = scanner.nextLine();// di sini panggil fungsi encrypt 
-                outputStream.writeUTF(username + ": " + messageToSend);
-                // outputStream.writeUTF("Dalam kode biner");
-                outputStream.write(messageToSend.getBytes());
-                outputStream.flush();
+                byte[] messageToSendInBytes = messageToSend.getBytes(StandardCharsets.UTF_8);
+                HelperTools.sendTLV2Stream(TLVWrapper.DATA_IN_CLEARTEXT, messageToSendInBytes.length, messageToSendInBytes, outputStream);
             }
             scanner.close();
 

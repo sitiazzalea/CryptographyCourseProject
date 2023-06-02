@@ -6,6 +6,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import org.zaza.Helper.HelperTools;
 import org.zaza.Helper.TLVWrapper;
@@ -28,41 +29,22 @@ public class ClientRequestHandler implements Runnable {
             this.socket = socket;
             this.outputStream = new DataOutputStream(socket.getOutputStream());
             this.inputStream = new  DataInputStream(socket.getInputStream());
-//            char dataType = inputStream.readChar();      //T
-//            int length = inputStream.readInt();         //L
-//            byte[] clientUsernameInBytes = new byte[length];    //V
-//            int byteCount = inputStream.read(clientUsernameInBytes);    //V
-//            System.out.println("username length from server: " + clientUsernameInBytes.length);
-//            this.clientUsername = inputStream.readUTF();
+
             TLVWrapper tlv = HelperTools.readStream2TLV(inputStream);
+            this.clientUsername = tlv.getValueAsString();
             clientHandlers.add(this);
-//            broadcastMessage("SERVER: " + clientUsername + " has entered the chat! ");
-            broadcastTLVMessage(tlv);
+            String message = "SERVER: " + this.clientUsername + " has entered the chat!";
+            broadcastTLVMessage(new TLVWrapper(tlv.getType(), message.length(), message.getBytes(StandardCharsets.UTF_8)));
         } catch (IOException e) {
-            // closeEverything(socket, inputStream, outputStream);
+             closeEverything(socket, inputStream, outputStream);
         }
     }
 
     private void broadcastTLVMessage(TLVWrapper tlv){
         for (ClientRequestHandler clientHandler : clientHandlers){
             try{
-//                if (!clientHandler.clientUsername.equals(clientUsername)) { //biar ga ngirim ke diri sendiri
-                HelperTools.sendTLV2Stream(tlv.getType(), tlv.getType(), tlv.getValueAsBinary(), outputStream);
-//                }
-            }
-            catch(IOException e){
-                closeEverything(socket, inputStream, outputStream);
-                
-            }
-        }
-    }
-
-    private void broadcastMessage(String messageToSend){
-        for (ClientRequestHandler clientHandler : clientHandlers){
-            try{
                 if (!clientHandler.clientUsername.equals(clientUsername)) { //biar ga ngirim ke diri sendiri
-                    clientHandler.outputStream.writeUTF(messageToSend);
-                    clientHandler.outputStream.flush();
+                    HelperTools.sendTLV2Stream(tlv.getType(), tlv.getType(), tlv.getValueAsBinary(), clientHandler.outputStream);
                 }
             }
             catch(IOException e){
@@ -74,14 +56,12 @@ public class ClientRequestHandler implements Runnable {
     
     @Override
     public void run() {
-        String messageFromClient;
-        
         while (socket.isConnected()) {
             try {
-                messageFromClient = inputStream.readUTF();
-//              Sout the message to server (sebagai pembeda antara yang dienkripsi dan belum dienkripsi)
-                System.out.println("CLEAR MESSAGE: " + messageFromClient);
-                broadcastMessage(messageFromClient);
+                TLVWrapper tlv = HelperTools.readStream2TLV(inputStream);
+                String message = this.clientUsername + ": " + tlv.getValueAsString();
+                broadcastTLVMessage(new TLVWrapper(tlv.getType(), message.length(), message.getBytes(StandardCharsets.UTF_8)));
+                System.out.println("CLEAR MESSAGE: " + tlv.getValueAsString());
             }
             catch (IOException e) {
                 closeEverything(socket, inputStream, outputStream);
@@ -92,8 +72,8 @@ public class ClientRequestHandler implements Runnable {
 
     public void removeClientHandler(){
         clientHandlers.remove(this);
-        broadcastMessage("SERVER:" +clientUsername +" has left the chat!");
-        
+        String message = "SERVER:" + clientUsername +" has left the chat!";
+        broadcastTLVMessage(new TLVWrapper(TLVWrapper.DATA_IN_CLEARTEXT, message.length(), message.getBytes(StandardCharsets.UTF_8)));
     }
 
     public void closeEverything(Socket socket, DataInputStream inputStream, DataOutputStream outputStream){
