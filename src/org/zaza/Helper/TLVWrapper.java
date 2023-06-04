@@ -1,5 +1,6 @@
 package org.zaza.Helper;
 
+import java.security.PublicKey;
 import java.util.Arrays;
 
 /**
@@ -7,8 +8,12 @@ import java.util.Arrays;
  * @author Zaza
  */
 public class TLVWrapper {
-    public static final char DATA_IN_CLEARTEXT = 'S';
-    public static final char DATA_IN_BINARY = 'B';
+    public static final char TYPE_CLEAR_DATA = 'S';
+    public static final char TYPE_BINARY_DATA = 'B';
+    public static final char TYPE_PUBLIC_KEY = 'P';
+    public static final char TYPE_GET_ALL_PUBLIC_KEYS = 'G';
+    public static final char TYPE_PUBLIC_KEY_LIST = 'L';
+    public static final char TYPE_RSA_ENCRYPTED_DATA = 'R';
     
     private char type;
     private int length;
@@ -33,11 +38,18 @@ public class TLVWrapper {
     }
     
     public String getValueAsString() {
-        if (type == DATA_IN_CLEARTEXT) {
+        if (type == TYPE_CLEAR_DATA) {
             return HelperTools.convBin2Str(value);
         }
         else
             return null; //nanti untuk hasil dekrip
     }
     
+    public PublicKey getValueAsPublicKey() {
+        if (type == TYPE_PUBLIC_KEY) {
+            return (PublicKey)HelperTools.deserializeFromArray(value);
+        }
+        else
+            return null; //nanti untuk hasil dekrip
+    }
 }
