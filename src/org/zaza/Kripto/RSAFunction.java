@@ -1,4 +1,4 @@
-package org.zaza.RSA;
+package org.zaza.Kripto;
 
 import java.math.BigInteger;
 import java.security.InvalidKeyException;

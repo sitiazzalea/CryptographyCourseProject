@@ -13,7 +13,10 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.util.Map;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
 
 /**
  *
@@ -30,6 +33,19 @@ public class HelperTools {
         generator.initialize(size);
         KeyPair keypair = generator.generateKeyPair();
         return keypair;
+    }
+
+    public static SecretKey generateAESKey(int size) throws NoSuchAlgorithmException {
+        KeyGenerator keyGenerator = KeyGenerator.getInstance("AES");
+        keyGenerator.init(size);
+        SecretKey key = keyGenerator.generateKey();
+        return key;
+    }    
+ 
+    public static byte[] generateRandom(int size) {
+        byte[] rand = new byte[size];
+        new SecureRandom().nextBytes(rand);
+        return rand;
     }
     
     public static byte[] convStr2Bin(String s) {

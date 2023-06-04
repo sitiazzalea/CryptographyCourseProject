@@ -5,10 +5,12 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 // import java.net.UnknownHostException;
@@ -17,10 +19,13 @@ import java.util.StringTokenizer;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 import org.zaza.Helper.CipherSendToWrapper;
 import org.zaza.Helper.HelperTools;
 import org.zaza.Helper.TLVWrapper;
-import org.zaza.RSA.RSAFunction;
+import org.zaza.Kripto.AESFunction;
+import org.zaza.Kripto.RSAFunction;
 
 /**
  *
@@ -32,6 +37,7 @@ public class ClientSocket {
     private DataOutputStream outputStream = null;
     private String username; 
     private KeyPair keypair;
+    private SecretKey AESkey;
     private Map<String, PublicKey> userPKMap = new HashMap<>();
     
     
@@ -42,6 +48,7 @@ public class ClientSocket {
             this.inputStream = new DataInputStream(socket.getInputStream());
             this.outputStream = new DataOutputStream(socket.getOutputStream());
             this.keypair = HelperTools.generateKeyPair(2048, "RSA");
+            this.AESkey = HelperTools.generateAESKey(256);
         } catch (IOException e) {
             e.getMessage();
             closeEverything(socket, inputStream, outputStream);
@@ -69,7 +76,9 @@ public class ClientSocket {
                         }
                         else if (tlv.getType() == TLVWrapper.TYPE_RSA_ENCRYPTED_DATA) {
                             CipherSendToWrapper data = (CipherSendToWrapper)HelperTools.deserializeFromArray(tlv.getValueAsBinary());
-                            byte[] decryptedMsg = RSAFunction.decryptRSA(data.getCipherText(), keypair.getPrivate());
+                            byte[] decryptedAESKey = RSAFunction.decryptRSA(data.getEncryptedAESKey(), keypair.getPrivate());
+                            SecretKey originalAESKey = new SecretKeySpec(decryptedAESKey, 0, decryptedAESKey.length, "AES"); 
+                            byte[] decryptedMsg = AESFunction.decryptAESGCM(data.getDestinationUsername().getBytes(), data.getCipherText(), originalAESKey, data.getIv());
                             System.out.println("Encrypted message from " + data.getSenderUsername()+ ": " + HelperTools.convBin2Str(decryptedMsg));
                         }
                         else {
@@ -85,7 +94,7 @@ public class ClientSocket {
     }
 
     public void sendMessage() throws NoSuchAlgorithmException, NoSuchPaddingException, 
-            InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+            InvalidKeyException, IllegalBlockSizeException, BadPaddingException, InvalidAlgorithmParameterException {
         try {
             System.out.println("To get PUBLIC KEY of other users: LIST_PK" );
             System.out.println("To send message to specific user: ENCRYPT destination message" );
@@ -112,15 +121,26 @@ public class ClientSocket {
                 else if (HelperTools.COMMAND_ENCRYPT.equals(command)){
                     String destinationUsername = "";
                     String plainText = "";
+                    
+                    byte[] iv = HelperTools.generateRandom(12);
+                    byte[] encodedAESKey = AESkey.getEncoded();
+                    byte[] encryptedAESKey;
+                    byte[] cipherText;
+                    
                     if (st.hasMoreElements()) 
                         destinationUsername = st.nextToken();
-                    if (st.hasMoreElements())
-                        plainText = st.nextToken();
-                    byte[] cipherText;
+                    StringBuilder sb = new StringBuilder();
+                    while (st.hasMoreElements()) {
+                        sb.append(st.nextToken());
+                        sb.append(" ");
+                    }
+                    plainText = sb.toString();
+                    
                     if (userPKMap.containsKey(destinationUsername)) {// TODO: check if message is empty 
-                        cipherText = RSAFunction.encryptRSA(plainText.getBytes(StandardCharsets.UTF_8), userPKMap.get(destinationUsername));
+                        encryptedAESKey = RSAFunction.encryptRSA(encodedAESKey, userPKMap.get(destinationUsername));
+                        cipherText = AESFunction.encryptAESGCM(destinationUsername.getBytes(), plainText.getBytes(), AESkey, iv);
 //                        1. pack username and ciphertext into CipherSendToWrapper object (immutable class): 
-                        CipherSendToWrapper data = new CipherSendToWrapper(username,destinationUsername, cipherText);
+                        CipherSendToWrapper data = new CipherSendToWrapper(username,destinationUsername, encryptedAESKey, cipherText, iv);
 //                        2. serialize CipherSendToWrapper in bytes.
                         byte[] serializedData = HelperTools.serializeToArray(data);
 //                        3. sendTLV2Stream
