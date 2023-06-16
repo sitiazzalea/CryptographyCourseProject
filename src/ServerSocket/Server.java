@@ -49,8 +49,9 @@ public class Server {
     }
 
     public static void main(String[] args) throws Exception {
+        System.out.println("Server has started!");
 //      ServerSocket dari library java
-        ServerSocket socketServer = new ServerSocket(8000); //to match to the client who wants to connect, port must be the same
+        ServerSocket socketServer = new ServerSocket(6666); //to match to the client who wants to connect, port must be the same
 //      Then pass to our server class
         Server server = new Server(socketServer);
         server.startServer();

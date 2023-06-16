@@ -183,7 +183,12 @@ public class ClientSocket {
         Scanner scanner = new Scanner(System.in);
         System.out.println("Enter your username for the group chat: ");
         String username = scanner.nextLine();
-        Socket socket = new Socket("localhost", 8000);
+        System.out.println("Enter server IP address (press enter for localhost): ");
+        String serverIP = scanner.nextLine();
+        if (serverIP.isEmpty()) {
+            serverIP = "localhost";
+        }
+        Socket socket = new Socket(serverIP, 6666);
         ClientSocket client = new ClientSocket(socket, username); //generate keypair for client
         client.listenForMessage();
         client.sendMessage();
